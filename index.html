@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Speakers Schedule - Time Keeper</title>
+  <title>Speaker Timer with Schedule</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -39,10 +39,10 @@
   </style>
 </head>
 <body>
-  <h1>Speakers Schedule - Time Keeper</h1>
+  <h1>Speaker Timer with Schedule</h1>
   <p>
     Speaker Name: <input type="text" id="speakerName" placeholder="Enter name">
-    Duration: 
+    Duration:
     <select id="duration">
       <option value="300">5 Minutes</option>
       <option value="600">10 Minutes</option>
@@ -61,6 +61,7 @@
   <div id="currentSpeaker"></div>
   <div id="timer">00:00</div>
   <div class="alert" id="alert"></div>
+
   <div class="controls">
     <button onclick="pauseTimer()">Pause</button>
     <button onclick="resumeTimer()">Resume</button>
@@ -75,6 +76,19 @@
     let timeLeft;
     let isRunning = false;
     let speakers = [];
+    let wakeLock = null;
+    let startTime, expectedEndTime;
+
+    async function requestWakeLock() {
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+          console.log('Screen Wake Lock released');
+        });
+      } catch (err) {
+        console.error(`${err.name}, ${err.message}`);
+      }
+    }
 
     function addSpeaker() {
       const name = document.getElementById('speakerName').value;
@@ -106,15 +120,19 @@
     }
 
     function startCountdown() {
+      startTime = Date.now();
+      expectedEndTime = startTime + timeLeft * 1000;
       isRunning = true;
       updateDisplay();
       document.getElementById('alert').innerText = '';
       document.body.style.backgroundColor = '#f9f9f9';
+      requestWakeLock();
 
       clearInterval(countdown);
       countdown = setInterval(() => {
         if (!isRunning) return;
-        timeLeft--;
+        const now = Date.now();
+        timeLeft = Math.max(0, Math.floor((expectedEndTime - now) / 1000));
         updateDisplay();
         showAlerts(timeLeft);
         if (timeLeft <= 0) {
@@ -135,17 +153,18 @@
     function showAlerts(t) {
       const alertEl = document.getElementById('alert');
       const beep = document.getElementById('beep');
+
       if (t === 300) {
         alertEl.innerText = "⏰ 5 Minutes Left";
-        document.body.style.backgroundColor = '#d4edda'; // Green
+        document.body.style.backgroundColor = '#28a745'; // Green
         beep.play();
       } else if (t === 180) {
         alertEl.innerText = "⏰ 3 Minutes Left";
-        document.body.style.backgroundColor = '#ffeeba'; // Amber
+        document.body.style.backgroundColor = '#ffc107'; // Amber
         beep.play();
       } else if (t === 60) {
         alertEl.innerText = "⏰ 1 Minute Left";
-        document.body.style.backgroundColor = '#f8d7da'; // Red
+        document.body.style.backgroundColor = '#dc3545'; // Dark Red
         beep.play();
       }
     }
@@ -156,6 +175,7 @@
 
     function resumeTimer() {
       if (!isRunning && timeLeft > 0) {
+        expectedEndTime = Date.now() + timeLeft * 1000;
         isRunning = true;
       }
     }
@@ -170,6 +190,9 @@
       isRunning = false;
     }
   </script>
+</body>
+</html>
+
   <script>
   document.addEventListener('contextmenu', event => event.preventDefault());
   document.onkeydown = function(e) {
